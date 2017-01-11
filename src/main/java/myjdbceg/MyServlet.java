@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -140,8 +141,34 @@ public class MyServlet extends HttpServlet {
 		String p=req.getParameter("password");
 		Connection conn = DriverManager.getConnection(url, u, p );
 		out.println("got connection...........<br/>");  
-		//InputStream input = getClass().getResourceAsStream("/classpath/to/my/file");
-		InputStream input=	MyServlet.class.getResourceAsStream("/Registration.sql");
+		URL u1 = getResourceInternal("/Registration.sql");
+		
+		if(u1==null){
+			u1 = getResourceInternal("\\Registration.sql");
+		}
+		if(u1==null){
+			u1 = getResourceInternal("Registration.sql");
+		}
+		if(u1==null){
+			out.println("Null Resources");
+		}
+		else{
+			out.println(u1.toExternalForm()+" got");
+			InputStream inp = u1.openStream();
+			useInputStream(conn, inp);              
+		}
+		
+		
+		DatabaseMetaData md = conn.getMetaData();
+		showRs(out, md.getCatalogs(),  "catalogs");
+		showRs(out, md.getSchemas(),  "schemas");
+		showRs(out, md.getTables(null, null, null, null),  "tables");
+				
+	}
+
+
+
+	private void useInputStream(Connection conn, InputStream input) throws IOException, SQLException {
 		InputStreamReader reader=new InputStreamReader(input);
 		BufferedReader buffer=new BufferedReader(reader);
 		String line=null;
@@ -152,20 +179,33 @@ public class MyServlet extends HttpServlet {
 			   stringBuffer.append(line).append("\n");
 			  }
 		String content=stringBuffer.toString();
-		//System.out.println(content);
-
-		content.replaceAll("\\s+","");		
+		//System.out.println(content);	
 		String[] query=content.split(";");
 		   stmt = conn.createStatement();
 		   System.out.println(query.length);
 		for(int i=0;i<query.length-1;i++){
-		stmt.execute(query[i]);
-		}              
-		DatabaseMetaData md = conn.getMetaData();
-		showRs(out, md.getCatalogs(),  "catalogs");
-		showRs(out, md.getSchemas(),  "schemas");
-		showRs(out, md.getTables(null, null, null, null),  "tables");
-				
+			String q=query[i];
+			if(q!=null){
+				q=q.trim();
+				if(q.length()>0){
+					
+					stmt.execute(q);
+					
+				}
+			}
+	
+		}
+	}
+
+
+
+	private URL getResourceInternal(String path) {
+		URL u1=this.getClass().getResource(path);
+		if(u1==null){
+		u1=this.getClass().getClassLoader().getResource(path);
+		
+		}
+		return u1;
 	}
 
 	
